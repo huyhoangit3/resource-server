@@ -1,6 +1,7 @@
 package com.hoangit3.resourceserver.config;
 
 import com.hoangit3.resourceserver.security.CustomAccessTokenConverter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -11,21 +12,30 @@ import org.springframework.security.oauth2.config.annotation.web.configurers.Res
 import org.springframework.security.oauth2.provider.token.AccessTokenConverter;
 import org.springframework.security.oauth2.provider.token.RemoteTokenServices;
 import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
+import org.springframework.security.oauth2.provider.token.TokenStore;
 import org.springframework.security.oauth2.provider.token.store.JwtAccessTokenConverter;
+import org.springframework.security.oauth2.provider.token.store.JwtTokenStore;
 
 @Configuration
 public class ResourceServerConfiguration extends ResourceServerConfigurerAdapter {
-
+    @Autowired
+    private CustomAccessTokenConverter customAccessTokenConverter;
     private static final String RESOURCE_ID = "microservice";
     private static final String SECURED_READ_SCOPE = "#oauth2.hasScope('READ')";
     private static final String SECURED_WRITE_SCOPE = "#oauth2.hasScope('WRITE')";
     private static final String SECURED_PATTERN = "/**";
 
     @Bean
-    public JwtAccessTokenConverter jwtAccessTokenConverter() {
+    public JwtAccessTokenConverter accessTokenConverter() {
         JwtAccessTokenConverter converter = new JwtAccessTokenConverter();
+        converter.setAccessTokenConverter(customAccessTokenConverter);
         return converter;
     }
+    @Bean
+    public TokenStore tokenStore() {
+        return new JwtTokenStore(accessTokenConverter());
+    }
+
     @Override
     public void configure(ResourceServerSecurityConfigurer resources) {
         resources.resourceId(RESOURCE_ID);
@@ -49,7 +59,7 @@ public class ResourceServerConfiguration extends ResourceServerConfigurerAdapter
         RemoteTokenServices tokenServices = new RemoteTokenServices();
         tokenServices.setClientId("mobile");
         tokenServices.setClientSecret("pin");
-        tokenServices.setAccessTokenConverter(jwtAccessTokenConverter());
+        tokenServices.setAccessTokenConverter(accessTokenConverter());
         tokenServices.setCheckTokenEndpointUrl("http://localhost:8091/oauth/check_token");
         return tokenServices;
     }
